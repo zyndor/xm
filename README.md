@@ -43,3 +43,60 @@ filters must follow a `-` character. Both are optional.
 
 All tests are included by default. Exclusion filters are applied after inclusion
 filters.
+
+Example
+-------
+```c++
+#include "xm.hpp"
+
+// Foo.hpp
+struct Foo {
+  uintptr_t value;
+
+  Foo(): value(reinterpret_cast<uintptr_t>(this))
+  {}
+
+  uintptr_t Hash(Foo const& other) const {
+    return value ^ other.value;
+  }
+
+  operator uintptr_t() const {
+    return value;
+  }
+};
+
+// FooTest.cpp
+struct FooTest { // Fixture class
+  FooTest() {
+    std::cout << "Hello!" << std::endl;
+  }
+
+  ~FooTest() {
+    std::cout << "Goodbye!" << std::endl;
+  }
+};
+
+XM_TEST(FooTest, That) {
+  XM_FAIL("'That' should not have been included.");
+}
+
+XM_TEST_F(FooTest, NotThis) { // using fixture, not executed
+  XM_FAIL("'NotThis' should have been excluded.");
+}
+
+XM_TEST_F(FooTest, This) { // using fixture
+  Foo f1, f2;
+
+  XM_ASSERT_NE(f1, 0);
+  XM_ASSERT_NE(f1, f2);
+
+  auto hash = f1.Hash(f2);
+  XM_ASSERT_EQ(hash ^ f1, f2);
+  XM_ASSERT_EQ(hash ^ f2, f1);
+}
+
+int main(int argc, char** argv) {
+  xm::SetFilter("*This*-Not*"); // includes This and NotThis, then excludes NotThis.
+  return xm::RunTests();
+}
+```
