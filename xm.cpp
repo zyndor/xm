@@ -265,17 +265,14 @@ int RunTests()
   auto test = sFirst;
   while (test)
   {
-    if (test->mSuite != lastSuite)
-    {
-      if (IsAllowed(test->mSuite, ""))
-      {
-        *sOutput << "[" << kStatus[SUITE] << "] " << test->mSuite << std::endl;
-      }
-      lastSuite = test->mSuite;
-    }
-
     if (IsAllowed(test->mSuite, test->mName))
     {
+      if (test->mSuite != lastSuite)
+      {
+        *sOutput << "[" << kStatus[SUITE] << "] " << test->mSuite << std::endl;
+        lastSuite = test->mSuite;
+      }
+
       *sOutput << "[" << kStatus[STARTED] << "] " << test->mSuite << kJoinTestSuiteName <<
         test->mName << std::endl;
       Clock clock;
