@@ -116,6 +116,7 @@ constexpr char const* const kStatus[]{
 };
 
 constexpr char kFilterWildcard = '*';
+constexpr char kJoinTestSuiteName = '-';
 
 thread_local char sMessageBuffer[1024];
 
@@ -214,7 +215,8 @@ bool FiltersMatch(std::string const& filters, char const* id, char const* idEnd)
 /// allowed through the filters.
 bool IsAllowed(char const* suite, char const* name)
 {
-  auto idLen = snprintf(sMessageBuffer, sizeof(sMessageBuffer), "%s-%s", suite, name);
+  auto idLen = snprintf(sMessageBuffer, sizeof(sMessageBuffer), "%s%c%s",
+    suite, kJoinTestSuiteName, name);
   auto idEnd = sMessageBuffer + idLen;
   return FiltersMatch(sIncludeFilter, sMessageBuffer, idEnd) &&
     !FiltersMatch(sExcludeFilter, sMessageBuffer, idEnd);
@@ -274,13 +276,14 @@ int RunTests()
 
     if (IsAllowed(test->mSuite, test->mName))
     {
-      *sOutput << "[" << kStatus[STARTED] << "] " << test->mSuite << "." << test->mName << std::endl;
+      *sOutput << "[" << kStatus[STARTED] << "] " << test->mSuite << kJoinTestSuiteName <<
+        test->mName << std::endl;
       Clock clock;
       bool result = test->Run();
       double tDelta = clock.Measure();
       *sOutput << StreamColor{ uint16_t(result ? FOREGROUND_GREEN : FOREGROUND_RED ) } <<
-        "[" << kStatus[result] << "] " << test->mSuite << "." << test->mName << " (" << tDelta << "ms)" <<
-        StreamColor{ FOREGROUND_RESET } << std::endl;
+        "[" << kStatus[result] << "] " << test->mSuite << kJoinTestSuiteName << test->mName <<
+        " (" << tDelta << "ms)" << StreamColor{ FOREGROUND_RESET } << std::endl;
       if (result)
       {
         ++passed;
