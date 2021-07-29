@@ -129,7 +129,7 @@ struct Printer
       ++i0;
     }
 
-    if (sizeof(T) > kMaxBytesPrinted)
+    if constexpr (sizeof(T) > kMaxBytesPrinted)
     {
       os << "...";
     }
