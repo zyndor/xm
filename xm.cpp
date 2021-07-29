@@ -351,7 +351,7 @@ StaticStringBuilder::operator char const*() const
   return sMessageBuffer;
 }
 
-char const* Formatter::Format(char const* str, bool value)
+char const* Formatter::Format(char const* str)
 {
   StaticStringBuilder ssb;
   auto& stream = ssb.Stream();
@@ -367,7 +367,7 @@ void Fail(char const* message)
 
 void Assert::True(bool value, char const* str)
 {
-  Check(value, Formatter::Format(str, value));
+  Check(value, Formatter::Format(str));
 }
 
 void Assert::Check(bool value, char const* message)

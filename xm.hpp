@@ -254,7 +254,7 @@ struct Formatter  // Formats the messages displayed for failed assertions.
     return ssb;
   }
 
-  static char const* Format(char const* str, bool value);
+  static char const* Format(char const* str);
 
 private:
   Formatter() = delete;
