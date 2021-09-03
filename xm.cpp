@@ -122,7 +122,7 @@ constexpr char const* const kStatus[]{
 };
 
 constexpr char kFilterWildcard = '*';
-constexpr char kJoinTestSuiteName = '-';
+constexpr char kJoinTestSuiteName = '_';
 
 thread_local char sMessageBuffer[1024];
 
