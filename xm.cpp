@@ -394,6 +394,8 @@ Test::Test(char const* suite, char const* name)
   sLast = this;
 }
 
+Test::~Test() = default;
+
 bool Test::Run()
 {
   try

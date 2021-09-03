@@ -314,6 +314,7 @@ class Test  // Test base class. Derive from & instantiate using the XM_TEST() an
 {
 protected:
   Test(char const* suite, char const* name);
+  virtual ~Test();
 
   bool Run();
 
