@@ -7,6 +7,7 @@
 #include "xm.hpp"
 #include <chrono>
 #include <vector>
+#include <cassert>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -138,66 +139,36 @@ char const* sError = nullptr;
 
 std::ostream* sOutput = &std::cout;
 
-///@brief Attempts to find the expression in the [ @a find, @a findEnd ) range,
-/// in the null terminated @a string.
-///@return Pointer to the end of substring in @a string, or nullptr if it was not
-/// found. Empty expression matches everything and so the original string is returned.
-char const* FindSubstring(char const* find, char const* findEnd, char const* string)
-{
-  if (std::distance(find, findEnd) == 0)
-  {
-    return string;
-  }
-
-LOOP:
-  string = strchr(string, *find);
-  if (!string)
-  {
-    return nullptr;
-  }
-
-  auto iFind = find;
-  do
-  {
-    ++iFind;
-    ++string;
-  } while (*string == *iFind && iFind != findEnd);
-
-  if (iFind != findEnd)
-  {
-    goto LOOP;
-  }
-
-  return string;
-}
-
 ///@brief Attempts to match the filter string in the [ @a filter, @a filterEnd ) range
 /// with the id in the [ @a id, @a idEnd ) range, handling wildcards.
 ///@returns false on a mismatch, and true if we've made it to both the end of filter
 /// and id without a mismatch.
 bool FilterMatch(char const* filter, char const* filterEnd, char const* id, char const* idEnd)
 {
-  while (filter != filterEnd)
+  // If we're at the end of the string, then we succeed if there's no non-wildcard characters
+  // left of the filter.
+  if (id == idEnd)
   {
-    if (*filter == kFilterWildcard)
-    {
-      filter = std::find_if(filter, filterEnd, [](char c) { return c != kFilterWildcard; });
-      if (filter == filterEnd)
-      {
-        return true;
-      }
-    }
-
-    auto subEnd = filter + strcspn(filter, ":*");
-    id = FindSubstring(filter, subEnd, id);
-    if (!id)
-    {
-      return false;
-    }
-
-    filter = subEnd;
+    return std::find_if(filter, filterEnd, [](char c) { return c != kFilterWildcard; }) == filterEnd;
   }
-  return id == idEnd;
+
+  if (filter == filterEnd)  // filter finished, id didn't -- fail.
+  {
+    return false;
+  }
+
+  if (*filter == *id) // next character matches -- proceed.
+  {
+    return FilterMatch(filter + 1, filterEnd, id + 1, idEnd);
+  }
+
+  if (*filter == kFilterWildcard) // next character is wildcard -- we either match or ignore the next character of id.
+  {
+    return FilterMatch(filter + 1, filterEnd, id, idEnd) ||
+      FilterMatch(filter, filterEnd, id + 1, idEnd);
+  }
+
+  return false; // mismatch -- fail.
 }
 
 ///@brief Attempts to match the colon-delimited string of @a filters to the id in
@@ -205,6 +176,9 @@ bool FilterMatch(char const* filter, char const* filterEnd, char const* id, char
 ///@return true if any of the filters have matched, false otherwise.
 bool FiltersMatch(std::string const& filters, char const* id, char const* idEnd)
 {
+  assert(id);
+  assert(idEnd >= id);
+
   auto i = filters.c_str();
   auto iEnd = i + filters.size();
   while (i != iEnd)
@@ -420,3 +394,41 @@ bool Test::Run()
 
 } // detail
 } // xm
+
+#if defined XM_SELF_TEST
+
+XM_TEST(Xm, FilterMatch)
+{
+  auto filter = [](std::string_view const& filter, std::string_view const& id) {
+    return xm::FilterMatch(filter.data(), filter.data() + filter.size(), id.data(), id.data() + id.size());
+  };
+
+  XM_ASSERT_TRUE(filter("A*", "A"));
+  XM_ASSERT_TRUE(filter("A*", "AB"));
+  XM_ASSERT_TRUE(filter("A*", "ABC"));
+
+  XM_ASSERT_TRUE(filter("*C", "C"));
+  XM_ASSERT_TRUE(filter("*C", "BC"));
+  XM_ASSERT_TRUE(filter("*C", "ABC"));
+
+  XM_ASSERT_TRUE(filter("*C", "CABC"));
+
+  XM_ASSERT_TRUE(filter("A*C", "AC"));
+  XM_ASSERT_TRUE(filter("A*C", "ACBC"));
+  XM_ASSERT_TRUE(filter("A*C", "ABCBCC"));
+
+  XM_ASSERT_TRUE(filter("A*B*C", "ABC"));
+  XM_ASSERT_TRUE(filter("A*B*C", "AABC"));
+  XM_ASSERT_TRUE(filter("A*B*C", "ABBC"));
+  XM_ASSERT_TRUE(filter("A*B*C", "ABCC"));
+  XM_ASSERT_TRUE(filter("A*B*C", "AABBCC"));
+
+  XM_ASSERT_FALSE(filter("B", "AB"));
+  XM_ASSERT_FALSE(filter("B", "BA"));
+  XM_ASSERT_FALSE(filter("B", "ABA"));
+  XM_ASSERT_FALSE(filter("*AB", "ABC"));
+  XM_ASSERT_FALSE(filter("BC*", "ABC"));
+  XM_ASSERT_FALSE(filter("A*C", "AB"));
+}
+
+#endif // XM_SELF_TEST
