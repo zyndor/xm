@@ -138,9 +138,10 @@ char const* sError = nullptr;
 
 std::ostream* sOutput = &std::cout;
 
-// Attempts to find the expression in the [ find, findEnd ) range, in string.
-// Returns a pointer to the end of substring in string, or nullptr if it was not found.
-// Empty expression matches everything and so the original string is returned.
+///@brief Attempts to find the expression in the [ @a find, @a findEnd ) range,
+/// in the null terminated @a string.
+///@return Pointer to the end of substring in @a string, or nullptr if it was not
+/// found. Empty expression matches everything and so the original string is returned.
 char const* FindSubstring(char const* find, char const* findEnd, char const* string)
 {
   if (std::distance(find, findEnd) == 0)
@@ -170,9 +171,10 @@ LOOP:
   return string;
 }
 
-/// Attempts to match the filter string in the [ filter, filterEnd ) range with the id in
-/// the [ id, idEnd ) range, handling wildcards. Returns false on a mismatch, and returns
-/// true if we've made it to both the end of filter and id without a mismatch.
+///@brief Attempts to match the filter string in the [ @a filter, @a filterEnd ) range
+/// with the id in the [ @a id, @a idEnd ) range, handling wildcards.
+///@returns false on a mismatch, and true if we've made it to both the end of filter
+/// and id without a mismatch.
 bool FilterMatch(char const* filter, char const* filterEnd, char const* id, char const* idEnd)
 {
   while (filter != filterEnd)
@@ -198,8 +200,9 @@ bool FilterMatch(char const* filter, char const* filterEnd, char const* id, char
   return id == idEnd;
 }
 
-/// Attempts to match the colon-delimited string of filters to the id in the [ id,
-/// idEnd ) range. Returns true if any of the filters have matched, false otherwise.
+///@brief Attempts to match the colon-delimited string of @a filters to the id in
+/// the [ @a id, @a idEnd ) range.
+///@return true if any of the filters have matched, false otherwise.
 bool FiltersMatch(std::string const& filters, char const* id, char const* idEnd)
 {
   auto i = filters.c_str();
@@ -217,8 +220,8 @@ bool FiltersMatch(std::string const& filters, char const* id, char const* idEnd)
   return false;
 }
 
-/// Determines if the combination of the given suite and name (joined by a '-') is
-/// allowed through the filters.
+///@brief Determines if the combination of the given @a suite and @a name (joined
+/// by a '_') is allowed through the filters.
 bool IsAllowed(char const* suite, char const* name)
 {
   auto idLen = snprintf(sMessageBuffer, sizeof(sMessageBuffer), "%s%c%s",
