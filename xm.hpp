@@ -83,10 +83,10 @@ struct StringWrap
   {}
 
   template <typename T,
-    typename std::enable_if<
-      std::is_member_function_pointer<decltype(&T::c_str)>::value &&
-      std::is_member_function_pointer<decltype(&T::size)>::value
-    >::type* = nullptr
+    std::enable_if_t<
+      std::is_member_function_pointer_v<decltype(&T::c_str)> &&
+      std::is_member_function_pointer_v<decltype(&T::size)>
+    >* = nullptr
   >
   StringWrap(T const& str) : mString{ str.c_str() }, mSize{ str.size() }
   {}
@@ -179,8 +179,8 @@ struct PrintDispatcher
 {
   static void Dispatch(T1 const& value, std::ostream& os)
   {
-    Printer<std::is_convertible<T1, StringWrap>::value ? kString :
-      (std::is_enum<T1>::value || std::is_convertible<T1, IntWrap>::value) ? kNumeric :
+    Printer<std::is_convertible_v<T1, StringWrap> ? kString :
+      (std::is_enum_v<T1> || std::is_convertible_v<T1, IntWrap>) ? kNumeric :
       kOther>::Print(value, os);
   }
 };
