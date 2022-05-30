@@ -402,6 +402,9 @@ private:
 ///@brief Asserts @a and @a b to not be equal.
 #define XM_ASSERT_NE(a, b) xm::detail::Assert::NotEqual(a, b, #a, #b)
 
+///@brief Asserts equality of floating point values @a a and @a b
+#define XM_ASSERT_FEQ(a, b, epsilon) xm::detail::Assert::LessThan(std::abs(a - b), epsilon)
+
 ///@brief Asserts @a and @a b, explicitly handled as strings, to be equal.
 #define XM_ASSERT_STREQ(a, b) xm::detail::Assert::Equal(xm::detail::StringWrap(a), xm::detail::StringWrap(b), #a, #b)
 
