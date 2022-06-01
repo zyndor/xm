@@ -13,6 +13,24 @@
 #include <cstring>
 #include <cstdint>
 
+// Compiler identification
+#if defined(_MSC_VER)
+#define XM_COMPILER_MSVC
+#endif
+
+// Diagnostics control
+#if defined(XM_COMPILER_MSVC)
+#define XM_MSVC_WARNING(x) __pragma(warning(x))
+
+#define XM_WARNINGS_PUSH XM_MSVC_WARNING(push)
+#define XM_WARNINGS_POP XM_MSVC_WARNING(pop)
+#else
+#define XM_MSVC_WARNING(x)
+
+#define XM_WARNINGS_PUSH
+#define XM_WARNINGS_POP
+#endif
+
 //==============================================================================
 /// Using eXaM, your interaction will mainly be with the functions in the 'xm'
 /// namespace (outside of 'detail'), and the macros at the bottom. Refer to the
@@ -108,6 +126,7 @@ enum Category
 {
   kNumeric,
   kString,
+  kFunction,
   kOther,
 };
 
@@ -133,6 +152,17 @@ struct Printer
     {
       os << "...";
     }
+  }
+};
+
+template <>
+struct Printer<kFunction>
+{
+  template <typename T>
+  static void Print(T const& value, std::ostream& os)
+  {
+    auto f = &value;
+    os << reinterpret_cast<void const*&>(f);
   }
 };
 
@@ -177,10 +207,16 @@ struct Printer<kNumeric>  // Prints numeric types, including enums (on a best ef
 template <typename T1, typename T2>
 struct PrintDispatcher
 {
+XM_WARNINGS_PUSH
+XM_MSVC_WARNING(disable: 4180)  // MSVC considers const-qualifying function pointer types redundant.
+
   static void Dispatch(T1 const& value, std::ostream& os)
   {
+XM_WARNINGS_POP
+
     Printer<std::is_convertible_v<T1, StringWrap> ? kString :
       (std::is_enum_v<T1> || std::is_convertible_v<T1, IntWrap>) ? kNumeric :
+      std::is_function_v<T1> ? kFunction :
       kOther>::Print(value, os);
   }
 };
