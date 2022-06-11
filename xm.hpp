@@ -159,10 +159,9 @@ template <>
 struct Printer<kFunction>
 {
   template <typename T>
-  static void Print(T const& value, std::ostream& os)
+  static void Print(T value, std::ostream& os)
   {
-    auto f = &value;
-    os << reinterpret_cast<void const*&>(f);
+    os << reinterpret_cast<void const*>(&value);
   }
 };
 
@@ -204,7 +203,7 @@ struct Printer<kNumeric>  // Prints numeric types, including enums (on a best ef
 // compared. E.g. char* will only be printed as a string if the other value is
 // string wrappable (otherwise it may be a pointer to the end of a range / buffer,
 // so we shouldn't be dereferencing it).
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename Enable = void>
 struct PrintDispatcher
 {
 XM_WARNINGS_PUSH
@@ -222,7 +221,7 @@ XM_WARNINGS_POP
 };
 
 template <typename T1, typename T2>
-struct PrintDispatcher<T1*, T2*>
+struct PrintDispatcher<T1*, T2*, std::enable_if_t<!std::is_function_v<T1>>>
 {
   static void Dispatch(T1 const* value, std::ostream& os)
   {
@@ -238,7 +237,7 @@ struct PrintDispatcher<T1*, T2*>
 };
 
 template <typename T1>
-struct PrintDispatcher<T1*, nullptr_t>
+struct PrintDispatcher<T1*, nullptr_t, std::enable_if_t<!std::is_function_v<T1>>>
 {
   static void Dispatch(T1 const* value, std::ostream& os)
   {
