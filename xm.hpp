@@ -414,28 +414,28 @@ private:
 ///@note Prefer to use XM_ASSERT_STREQ() for equality of strings, which eliminates
 /// the rist of (char) pointers being compared arithmetically, rather than their
 /// pointed-to data, lexically.
-#define XM_ASSERT_TRUE(expr) xm::detail::Assert::True(expr, #expr)
+#define XM_ASSERT_TRUE(expr) xm::detail::Assert::True((expr), #expr)
 
 ///@brief Asserts @a expr to be false.
-#define XM_ASSERT_FALSE(expr) xm::detail::Assert::True(!expr, "!(" #expr ")")
+#define XM_ASSERT_FALSE(expr) xm::detail::Assert::True(!(expr), "!(" #expr ")")
 
 ///@brief Asserts @a a and @a b to be equal.
-#define XM_ASSERT_EQ(a, b) xm::detail::Assert::Equal(a, b, #a, #b)
+#define XM_ASSERT_EQ(a, b) xm::detail::Assert::Equal((a), (b), #a, #b)
 
 ///@brief Asserts @a a to be less than @a b.
-#define XM_ASSERT_LT(a, b) xm::detail::Assert::LessThan(a, b, #a, #b)
+#define XM_ASSERT_LT(a, b) xm::detail::Assert::LessThan((a), (b), #a, #b)
 
 ///@brief Asserts @a a to be less than or equal to @a b.
-#define XM_ASSERT_LE(a, b) xm::detail::Assert::LessEqual(a, b, #a, #b)
+#define XM_ASSERT_LE(a, b) xm::detail::Assert::LessEqual((a), (b), #a, #b)
 
 ///@brief Asserts @a a to be greater than @a b.
-#define XM_ASSERT_GT(a, b) xm::detail::Assert::GreaterThan(a, b, #a, #b)
+#define XM_ASSERT_GT(a, b) xm::detail::Assert::GreaterThan((a), (b), #a, #b)
 
 ///@brief Asserts @a a to be greater than or equal to @a b.
-#define XM_ASSERT_GE(a, b) xm::detail::Assert::GreaterEqual(a, b, #a, #b)
+#define XM_ASSERT_GE(a, b) xm::detail::Assert::GreaterEqual((a), (b), #a, #b)
 
 ///@brief Asserts @a and @a b to not be equal.
-#define XM_ASSERT_NE(a, b) xm::detail::Assert::NotEqual(a, b, #a, #b)
+#define XM_ASSERT_NE(a, b) xm::detail::Assert::NotEqual((a), (b), #a, #b)
 
 ///@brief Asserts equality of floating point values @a a and @a b
 #define XM_ASSERT_FEQ(a, b, epsilon) XM_ASSERT_LT(std::abs((a) - (b)), epsilon)
