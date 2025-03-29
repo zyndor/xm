@@ -384,7 +384,8 @@ private:
 
 ///@brief Use this to declare and define a test case using a default constructible
 /// class which shall be instantiated, providing an opportunity for fixture setup
-/// (in its constructor) and teardown (in its destructor). e.g.:<br/>
+/// (in its constructor) and teardown (in its destructor). The fixture is also made
+/// available in the test function, as xmFixture. e.g.:<br/>
 /// struct Io // fixture<br/>
 /// {<br/>
 ///   Io() { InitFileSystem(); }<br/>
@@ -392,19 +393,20 @@ private:
 /// };<br/>
 /// XM_TEST_F(Io, Serialization) {<br/>
 ///   // test body here.<br/>
+///   xmFixture.doCoolThings();<br/>
 /// }<br/>
 #define XM_TEST_F(fixture, name) class XM_DETAIL_TEST_CLASS_NAME(fixture, name) : protected xm::detail::Test\
   {\
   public:\
     XM_DETAIL_TEST_CLASS_NAME(fixture, name) () : xm::detail::Test(#fixture, #name) {}\
+  protected:\
     void RunInternal() override {\
       fixture f;\
-      RunItAlready();\
+      RunWithFixture(f);\
     };\
-  protected:\
-    void RunItAlready();\
+    void RunWithFixture(fixture&);\
   } XM_DETAIL_TEST_NAME(fixture, name ## Test);\
-  void XM_DETAIL_TEST_CLASS_NAME(fixture, name) ::RunItAlready()
+  void XM_DETAIL_TEST_CLASS_NAME(fixture, name) ::RunWithFixture(fixure& xmFixture)
 
 ///@brief Fails a test with the given @a message.
 ///@note The message is printed as is, with no further formatting.
