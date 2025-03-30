@@ -351,9 +351,8 @@ protected:
   Test(char const* suite, char const* name);
   virtual ~Test();
 
-  bool Run();
-
-  virtual void RunInternal() =0;
+public:
+  virtual void Run() const = 0;
 
 private:
   char const* mSuite;
@@ -378,9 +377,12 @@ private:
   public:\
     XM_DETAIL_TEST_CLASS_NAME(suite, name) () : xm::detail::Test(#suite, #name) {}\
   protected:\
-    void RunInternal() override;\
+    static void RunTest();\
+    void Run() const override {\
+      RunTest();\
+    }\
   } XM_DETAIL_TEST_NAME(suite, name ## Test);\
-  void XM_DETAIL_TEST_CLASS_NAME(suite, name) ::RunInternal()
+  void XM_DETAIL_TEST_CLASS_NAME(suite, name) ::RunTest()
 
 ///@brief Use this to declare and define a test case using a default constructible
 /// class which shall be instantiated, providing an opportunity for fixture setup
@@ -400,13 +402,13 @@ private:
   public:\
     XM_DETAIL_TEST_CLASS_NAME(fixture, name) () : xm::detail::Test(#fixture, #name) {}\
   protected:\
-    void RunInternal() override {\
+    static void RunTest(fixture&);\
+    void Run() const override {\
       fixture f;\
-      RunWithFixture(f);\
+      RunTest(f);\
     };\
-    void RunWithFixture(fixture&);\
   } XM_DETAIL_TEST_NAME(fixture, name ## Test);\
-  void XM_DETAIL_TEST_CLASS_NAME(fixture, name) ::RunWithFixture(fixure& xmFixture)
+  void XM_DETAIL_TEST_CLASS_NAME(fixture, name) ::RunTest([[maybe_unused]] fixture& xmFixture)
 
 ///@brief Fails a test with the given @a message.
 ///@note The message is printed as is, with no further formatting.

@@ -239,6 +239,25 @@ void SetFilter(char const* filterStr)
   }
 }
 
+bool RunTest(detail::Test& test)
+{
+  try
+  {
+    test.Run();
+    return true;
+  }
+  catch (Exception const& e)
+  {
+    sError = e.message;
+    return false;
+  }
+  catch (...)
+  {
+    sError = "Bad exception thrown.";
+    return false;
+  }
+}
+
 int RunTests()
 {
   int run = 0;
@@ -259,9 +278,10 @@ int RunTests()
       *sOutput << "[" << kStatus[STARTED] << "] " << test->mSuite << kJoinTestSuiteName <<
         test->mName << std::endl;
       Clock clock;
-      bool result = test->Run();
+
+      bool const result = RunTest(*test);
       double tDelta = clock.Measure();
-      *sOutput << StreamColor{ uint16_t(result ? FOREGROUND_GREEN : FOREGROUND_RED ) } <<
+      *sOutput << StreamColor{ uint16_t(result ? FOREGROUND_GREEN : FOREGROUND_RED) } <<
         "[" << kStatus[result] << "] " << test->mSuite << kJoinTestSuiteName << test->mName <<
         " (" << tDelta << "ms)" << StreamColor{ FOREGROUND_RESET } << std::endl;
       if (result)
@@ -372,25 +392,6 @@ Test::Test(char const* suite, char const* name)
 }
 
 Test::~Test() = default;
-
-bool Test::Run()
-{
-  try
-  {
-    RunInternal();
-    return true;
-  }
-  catch (Exception const& e)
-  {
-    sError = e.message;
-    return false;
-  }
-  catch (...)
-  {
-    sError = "Bad exception thrown.";
-    return false;
-  }
-}
 
 } // detail
 } // xm
