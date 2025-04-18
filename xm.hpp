@@ -415,15 +415,15 @@ private:
 #define XM_FAIL(message) xm::detail::Fail(message)
 
 ///@brief Asserts @a expr to be true.
-///@note Prefer to use XM_ASSERT_STREQ() for equality of strings, which eliminates
-/// the rist of (char) pointers being compared arithmetically, rather than their
-/// pointed-to data, lexically.
 #define XM_ASSERT_TRUE(expr) xm::detail::Assert::True((expr), #expr)
 
 ///@brief Asserts @a expr to be false.
 #define XM_ASSERT_FALSE(expr) xm::detail::Assert::True(!(expr), "!(" #expr ")")
 
 ///@brief Asserts @a a and @a b to be equal.
+///@note Prefer to use XM_ASSERT_STREQ() for equality of strings, which eliminates
+/// the risk of (char) pointers being compared arithmetically, rather than by their
+/// pointed-to data, lexicographically.
 #define XM_ASSERT_EQ(a, b) xm::detail::Assert::Equal((a), (b), #a, #b)
 
 ///@brief Asserts @a a to be less than @a b.
