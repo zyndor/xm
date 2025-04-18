@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdint>
+#include <cstddef>
 
 // Compiler identification
 #if defined(_MSC_VER)
@@ -237,7 +238,7 @@ struct PrintDispatcher<T1*, T2*, std::enable_if_t<!std::is_function_v<T1>>>
 };
 
 template <typename T1>
-struct PrintDispatcher<T1*, nullptr_t, std::enable_if_t<!std::is_function_v<T1>>>
+struct PrintDispatcher<T1*, std::nullptr_t, std::enable_if_t<!std::is_function_v<T1>>>
 {
   static void Dispatch(T1 const* value, std::ostream& os)
   {
@@ -253,9 +254,9 @@ struct PrintDispatcher<T1*, nullptr_t, std::enable_if_t<!std::is_function_v<T1>>
 };
 
 template <typename T2>
-struct PrintDispatcher<nullptr_t, T2>
+struct PrintDispatcher<std::nullptr_t, T2>
 {
-  static void Dispatch(nullptr_t, std::ostream& os)
+  static void Dispatch(std::nullptr_t, std::ostream& os)
   {
     os << "nullptr";
   }
