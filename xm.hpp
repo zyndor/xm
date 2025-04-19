@@ -10,6 +10,8 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <array>
+#include <tuple>
 #include <cstring>
 #include <cstdint>
 #include <cstddef>
@@ -354,13 +356,117 @@ protected:
 
 public:
   virtual void Run() const = 0;
+  virtual void GetId(std::ostream& os) const;
+  virtual Test const* GetNext() const { return mNext; }
+
+  char const* GetSuite() const { return mSuite; }
 
 private:
   char const* mSuite;
   char const* mName;
   Test* mNext = nullptr;
+};
 
-  friend int xm::RunTests();
+class CartesianProductCoreCore
+{
+protected:
+  uint32_t mIteration = 0;
+
+  uint32_t GetIteration() const { return mIteration; }
+};
+
+template <uint32_t tSize>
+class CartesianProductCore : CartesianProductCoreCore
+{
+protected:
+  using Array = std::array<uint32_t, tSize>;
+
+  using CartesianProductCoreCore::GetIteration;
+
+  static constexpr uint32_t kSize = tSize;
+
+  Array const mSizes;
+  Array mState{};
+
+  CartesianProductCore(Array const& sizes) :
+    mSizes{ sizes }
+  {}
+
+  bool Advance()
+  {
+    ++mIteration;
+    uint32_t i = 0;
+    do
+    {
+      if (++mState[i] < mSizes[i])
+      {
+        return true;
+      }
+      mState[i] = 0;
+      ++i;
+    } while (i < tSize);
+    return false;
+  }
+
+  void Reset()
+  {
+    for (auto& i : mState)
+    {
+      i = 0;
+    }
+  }
+};
+
+template <typename TData>
+struct CartesianProduct : CartesianProductCore<std::tuple_size_v<TData>>
+{
+  using Base = CartesianProductCore<std::tuple_size_v<TData>>;
+
+  using Base::Advance;
+  using Base::Reset;
+  using Base::GetIteration;
+
+  CartesianProduct(TData const& data) :
+    Base{ GetElementSizes(data, std::make_integer_sequence<uint32_t, Base::kSize>{}) },
+    mData{ data }
+  {}
+
+  void FormatState(std::ostream& os) const
+  {
+    auto iIndices = std::begin(Base::mState);
+    for (auto& name : GetNames(mData, std::make_integer_sequence<uint32_t, Base::kSize>{}))
+    {
+      os << '_' << name << '[' << *iIndices << ']';
+      ++iIndices;
+    }
+  }
+
+  auto GetProductSet() const
+  {
+    return GetProductSet(mData, Base::mState, std::make_integer_sequence<uint32_t, Base::kSize>{});
+  }
+
+private:
+  template <uint32_t... TIndices>
+  constexpr static auto GetElementSizes(TData const& tuple, std::integer_sequence<uint32_t, TIndices...>)
+  {
+    return std::array<uint32_t, sizeof...(TIndices)>{ uint32_t(std::get<TIndices>(tuple).second.size())... };
+  }
+
+  template <uint32_t... TIndices>
+  constexpr static auto GetProductSet(TData const& tuple, typename Base::Array const& indices,
+    std::integer_sequence<uint32_t, TIndices...>)
+  {
+    return std::make_tuple((std::begin(std::get<TIndices>(tuple).second)[indices[TIndices]])...);
+  }
+
+  template <uint32_t... TIndices>
+  constexpr static auto GetNames(TData const& tuple, std::integer_sequence<uint32_t, TIndices...>)
+  {
+    return std::array<char const*, sizeof...(TIndices)>{ std::get<TIndices>(tuple).first... };
+  }
+
+  TData const& mData;
 };
 
 } // detail
@@ -410,6 +516,49 @@ private:
     };\
   } XM_DETAIL_TEST_NAME(fixture, name ## Test);\
   void XM_DETAIL_TEST_CLASS_NAME(fixture, name) ::RunTest([[maybe_unused]] fixture& xmFixture)
+
+#define XM_CARTESIAN_SET(name, ...) constexpr auto name = std::make_pair(#name, std::array{ __VA_ARGS__ })
+#define XM_CARTESIAN_SPACE(name, ...) constexpr auto name = std::tie(__VA_ARGS__)
+
+///@brief Use this to declare and define a combinatorial test based on a given cartesian
+///  space. The test will be executed the number of times required to produce every
+///  product set in the space (taking one element from each of the cartesian sets
+///  comprising the space on each iteration). Two arguments are passed to the test
+///  function: @a xmProductSet, a tuple with an element from each of the cartesian
+///  sets in the given space; @a xmIteration is the ordinal of the iteration of the
+///  test. Usage:<br/>
+/// XM_CARTESIAN_SET(kNames, "Alice", "Bob", "Charlie");<br/>
+/// XM_CARTESIAN_SET(kAges, 8, 21, 50);<br/>
+/// XM_CARTESIAN_SPACE(kPeople, kNames, kAges);<br/>
+/// XM_TEST_C(Io, Serialization, kPeople) {<br/>
+///   auto currentName = std::get<0>(xmProductSet);<br/>
+///   auto currentAge = std::get<1>(xmProductSet);<br/>
+///   // test body here.<br/>
+/// }<br/>
+///  Produces: { "Alice", 8 } - iteration 0, { "Bob", 8 } - iteration 1, [...]
+///  { "Alice", 21 } - iteration 3, [...] { "Charlie", 50 } - iteration 8.
+#define XM_TEST_C(suite, name, space) class XM_DETAIL_TEST_CLASS_NAME(suite, name) : protected xm::detail::Test\
+  {\
+  public:\
+    XM_DETAIL_TEST_CLASS_NAME(suite, name) () : xm::detail::Test(#suite, #name) {}\
+  protected:\
+    using Data = decltype(space);\
+    using CartesianProduct = xm::detail::CartesianProduct<Data>;\
+    using ProductSet = decltype(static_cast<CartesianProduct*>(nullptr)->GetProductSet());\
+    static void RunTest(ProductSet const&, uint32_t);\
+    mutable CartesianProduct mCombinationGenerator{ space };\
+    void Run() const override\
+    {\
+      auto productSet = mCombinationGenerator.GetProductSet();\
+      RunTest(productSet, mCombinationGenerator.GetIteration());\
+    }\
+    void GetId(std::ostream& os) const override {\
+      xm::detail::Test::GetId(os);\
+      mCombinationGenerator.FormatState(os);\
+    }\
+    Test const* GetNext() const override{ return mCombinationGenerator.Advance() ? this : (mCombinationGenerator.Reset(), Test::GetNext()); }\
+  } XM_DETAIL_TEST_NAME(suite, name ## Test);\
+  void XM_DETAIL_TEST_CLASS_NAME(suite, name) ::RunTest(ProductSet const& xmProductSet, uint32_t const xmIteration)
 
 ///@brief Fails a test with the given @a message.
 ///@note The message is printed as is, with no further formatting.

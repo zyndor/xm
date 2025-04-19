@@ -41,6 +41,11 @@ struct StreamBuf : std::streambuf
     setp(mBuffer, mBuffer + mSize);
   }
 
+  size_t GetPos() const
+  {
+    return pptr() - mBuffer;
+  }
+
 private:
   size_t mSize;
   char* mBuffer;
@@ -134,7 +139,7 @@ thread_local StreamBuf sStreamBuf{ sizeof(sMessageBuffer), sMessageBuffer };
 std::string sIncludeFilter(1, kFilterWildcard);
 std::string sExcludeFilter;
 
-detail::Test* sFirst = nullptr;
+detail::Test const* sFirst = nullptr;
 detail::Test* sLast = nullptr;
 
 char const* sError = nullptr;
@@ -236,7 +241,7 @@ void SetFilter(char const* filterStr)
   }
 }
 
-bool RunTest(detail::Test& test)
+bool RunTest(detail::Test const& test)
 {
   try
   {
@@ -257,6 +262,7 @@ bool RunTest(detail::Test& test)
 
 int RunTests()
 {
+  char idBuffer[1024];
   int run = 0;
   int passed = 0;
   int ignored = 0;
@@ -264,26 +270,27 @@ int RunTests()
   auto test = sFirst;
   while (test)
   {
-    auto const idLen = snprintf(sMessageBuffer, sizeof(sMessageBuffer), "%s%c%s",
-      test->mSuite, kJoinTestSuiteName, test->mName);
-    std::string_view const id(sMessageBuffer, idLen);
+    StreamBuf idStreamBuf{ sizeof(idBuffer), idBuffer };
+    std::ostream idStream(&idStreamBuf);
+    test->GetId(idStream);
+    std::string_view const id{ idBuffer, idStreamBuf.GetPos() };
     if (IsAllowed(id))
     {
-      if (test->mSuite != lastSuite)
+      auto* const suite = test->GetSuite();
+      if (suite != lastSuite)
       {
-        *sOutput << "[" << kStatus[SUITE] << "] " << test->mSuite << std::endl;
-        lastSuite = test->mSuite;
+        *sOutput << "[" << kStatus[SUITE] << "] " << suite << std::endl;
+        lastSuite = suite;
       }
 
-      *sOutput << "[" << kStatus[STARTED] << "] " << test->mSuite << kJoinTestSuiteName <<
-        test->mName << std::endl;
+      *sOutput << "[" << kStatus[STARTED] << "] " << id << std::endl;
       Clock clock;
 
       bool const result = RunTest(*test);
       double tDelta = clock.Measure();
       *sOutput << StreamColor{ uint16_t(result ? FOREGROUND_GREEN : FOREGROUND_RED) } <<
-        "[" << kStatus[result] << "] " << test->mSuite << kJoinTestSuiteName << test->mName <<
-        " (" << tDelta << "ms)" << StreamColor{ FOREGROUND_RESET } << std::endl;
+        "[" << kStatus[result] << "] " << id << " (" << tDelta << "ms)" <<
+        StreamColor{ FOREGROUND_RESET } << std::endl;
       if (result)
       {
         ++passed;
@@ -300,7 +307,7 @@ int RunTests()
       ++ignored;
     }
 
-    test = test->mNext;
+    test = test->GetNext();
   }
 
   *sOutput << "[" << kStatus[SUITE] << "]" << std::endl;
@@ -392,6 +399,11 @@ Test::Test(char const* suite, char const* name)
 }
 
 Test::~Test() = default;
+
+void Test::GetId(std::ostream& os) const
+{
+  os << mSuite << kJoinTestSuiteName << mName;
+}
 
 } // detail
 } // xm
