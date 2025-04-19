@@ -7,6 +7,7 @@
 #include "xm.hpp"
 #include <chrono>
 #include <vector>
+#include <string_view>
 #include <cassert>
 
 #ifdef _WIN32
@@ -123,6 +124,7 @@ constexpr char const* const kStatus[]{
 };
 
 constexpr char kFilterWildcard = '*';
+constexpr char kIdSeparator = ':';
 constexpr char kJoinTestSuiteName = '_';
 
 thread_local char sMessageBuffer[1024];
@@ -139,33 +141,32 @@ char const* sError = nullptr;
 
 std::ostream* sOutput = &std::cout;
 
-///@brief Attempts to match the filter string in the [ @a filter, @a filterEnd ) range
-/// with the id in the [ @a id, @a idEnd ) range, handling wildcards.
+///@brief Attempts to match the @a filter with the @a id, handling wildcards.
 ///@returns false on a mismatch, and true if we've made it to both the end of filter
 /// and id without a mismatch.
-bool FilterMatch(char const* filter, char const* filterEnd, char const* id, char const* idEnd)
+bool FilterMatch(std::string_view filter, std::string_view id)
 {
   // If we're at the end of the string, then we succeed if there's no non-wildcard characters
   // left of the filter.
-  if (id == idEnd)
+  if (id.empty())
   {
-    return std::find_if(filter, filterEnd, [](char c) { return c != kFilterWildcard; }) == filterEnd;
+    return filter.find_first_not_of(kFilterWildcard) == std::string::npos;
   }
 
-  if (filter == filterEnd)  // filter finished, id didn't -- fail.
+  if (filter.empty())  // filter finished, id didn't -- fail.
   {
     return false;
   }
 
-  if (*filter == *id) // next character matches -- proceed.
+  auto const first = filter[0];
+  if (first == id.front()) // next character matches -- proceed.
   {
-    return FilterMatch(filter + 1, filterEnd, id + 1, idEnd);
+    return FilterMatch(filter.substr(1), id.substr(1));
   }
 
-  if (*filter == kFilterWildcard) // next character is wildcard -- we either match or ignore the next character of id.
+  if (first == kFilterWildcard) // next character is wildcard -- we either match or ignore the next character of id.
   {
-    return FilterMatch(filter + 1, filterEnd, id, idEnd) ||
-      FilterMatch(filter, filterEnd, id + 1, idEnd);
+    return FilterMatch(filter.substr(1), id) || FilterMatch(filter, id.substr(1));
   }
 
   return false; // mismatch -- fail.
@@ -174,35 +175,31 @@ bool FilterMatch(char const* filter, char const* filterEnd, char const* id, char
 ///@brief Attempts to match the colon-delimited string of @a filters to the id in
 /// the [ @a id, @a idEnd ) range.
 ///@return true if any of the filters have matched, false otherwise.
-bool FiltersMatch(std::string const& filters, char const* id, char const* idEnd)
+bool FiltersMatch(std::string const& filters, std::string_view id)
 {
-  assert(id);
-  assert(idEnd >= id);
-
-  auto i = filters.c_str();
-  auto iEnd = i + filters.size();
-  while (i != iEnd)
+  std::string_view filter = filters;
+  while (!filter.empty())
   {
-    auto subEnd = i + strcspn(i, ":");
-    if (FilterMatch(i, subEnd, id, idEnd))
+    auto const end = [filter]
+    {
+      auto iEnd = filter.find(kIdSeparator);
+      return iEnd == std::string::npos ? filter.size() : iEnd;
+    }();
+    if (FilterMatch(filter.substr(0, end), id))
     {
       return true;
     }
 
-    i = subEnd + (subEnd != iEnd);
+    filter = filter.substr(end + (end != filter.size()));
   }
   return false;
 }
 
-///@brief Determines if the combination of the given @a suite and @a name (joined
-/// by a '_') is allowed through the filters.
-bool IsAllowed(char const* suite, char const* name)
+///@brief Determines if the given @a id is allowed through the filters.
+bool IsAllowed(std::string_view id)
 {
-  auto idLen = snprintf(sMessageBuffer, sizeof(sMessageBuffer), "%s%c%s",
-    suite, kJoinTestSuiteName, name);
-  auto idEnd = sMessageBuffer + idLen;
-  return FiltersMatch(sIncludeFilter, sMessageBuffer, idEnd) &&
-    !FiltersMatch(sExcludeFilter, sMessageBuffer, idEnd);
+  return FiltersMatch(sIncludeFilter, id) &&
+    !FiltersMatch(sExcludeFilter, id);
 }
 
 } // nonamespace
@@ -267,7 +264,10 @@ int RunTests()
   auto test = sFirst;
   while (test)
   {
-    if (IsAllowed(test->mSuite, test->mName))
+    auto const idLen = snprintf(sMessageBuffer, sizeof(sMessageBuffer), "%s%c%s",
+      test->mSuite, kJoinTestSuiteName, test->mName);
+    std::string_view const id(sMessageBuffer, idLen);
+    if (IsAllowed(id))
     {
       if (test->mSuite != lastSuite)
       {
@@ -401,7 +401,7 @@ Test::~Test() = default;
 XM_TEST(Xm, FilterMatch)
 {
   auto filter = [](std::string_view const& filter, std::string_view const& id) {
-    return xm::FilterMatch(filter.data(), filter.data() + filter.size(), id.data(), id.data() + id.size());
+    return xm::FilterMatch(filter.data(), id);
   };
 
   XM_ASSERT_TRUE(filter("A*", "A"));
